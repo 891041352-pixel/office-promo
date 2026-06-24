@@ -72,25 +72,28 @@
 <div class="box" id="mainBox">
   <div class="icon">🛒</div>
   <h2>正在前往淘宝店铺</h2>
-  <p class="sub">请选择打开方式</p>
+  <p class="sub">点击按钮，自动复制口令并打开淘宝</p>
 
-  <a class="btn btn-primary" id="btnApp">
-    📱 打开手机淘宝 App（推荐）
+  <!-- 主按钮：一键复制+打开 -->
+  <a class="btn btn-primary" id="btnOneTap">
+    📱 一键打开淘宝（复制口令+打开App）
   </a>
 
   <a class="btn btn-secondary" id="btnCopy">
-    📋 复制淘口令打开（最稳）
+    📋 仅复制淘口令
   </a>
 
   <a class="btn btn-secondary" id="btnWeb">
     🌐 在浏览器中打开（需登录）
   </a>
 
-  <p class="tip" id="tipText">
-    推荐：打开淘宝App → 自动弹出店铺<br/>
-    备用：复制淘口令 → 打开淘宝自动识别
+  <p class="tip">
+    点击「一键打开淘宝」后：<br/>
+    ① 淘口令已自动复制<br/>
+    ② 淘宝App会自动打开并识别口令<br/>
+    如未安装淘宝App，请选择「在浏览器中打开」
   </p>
-  <p id="copyOk">✅ 淘口令已复制！请打开手机淘宝 App</p>
+  <p id="copyOk">✅ 淘口令已复制！淘宝App正在打开...</p>
 </div>
 
 <div class="wechat-tip" id="wechatTip">
@@ -99,19 +102,12 @@
 </div>
 
 <script>
-// ====== 配置：请替换为你的真实店铺信息 ======
-// 方式1：用店铺ID（你的店铺ID是 515102705）
-var SHOP_ID     = '515102705';
-// taobao:// 正确格式：直接打开店铺首页
-var DEEP_LINK   = 'taobao://shop.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
-// 方式2：如果你有具体商品的ID，用这个（更可靠）
-// var ITEM_ID = '123456789'; // 替换成你的商品ID
-// var DEEP_LINK = 'taobao://item.taobao.com/item.htm?id=' + ITEM_ID;
-// 手机网页版店铺链接（无需登录可浏览）
-var WEB_URL     = 'https://m.tb.cn/h.RIumfvgKR02Togn';
-// 淘口令（从淘宝App分享获得，复制后打开App自动识别）
-var TAO_TOKEN   = '78eAGBgiY80xS';
-// ================================================
+// ====== 配置区（请按需修改）======
+// 淘口令：从淘宝App分享 → 复制链接 获取
+var TAO_KOU_LING = '78eAGBgiY80xS';
+// 店铺短链（备用）
+var SHORT_URL = 'https://m.tb.cn/h.RIumfvgKR02Togn';
+// ==================================
 
 var ua       = navigator.userAgent;
 var isWechat = /MicroMessenger/i.test(ua);
@@ -119,62 +115,25 @@ var isAndroid = /Android/i.test(ua);
 var isIOS    = /iPhone|iPad|iPod/i.test(ua);
 var isMobile = isAndroid || isIOS;
 
-// 点击「打开淘宝App」
-document.getElementById('btnApp').addEventListener('click', function(e) {
-  e.preventDefault();
-  if (isWechat) {
-    document.getElementById('wechatTip').classList.add('show');
-    return;
-  }
-  openTaobao();
-});
-
-// 点击「复制淘口令」
-document.getElementById('btnCopy').addEventListener('click', function(e) {
-  e.preventDefault();
-  copyToken();
-});
-
-// 点击「浏览器中打开」
-document.getElementById('btnWeb').addEventListener('click', function(e) {
-  e.preventDefault();
-  window.open(WEB_URL, '_blank');
-});
-
-// 唤起淘宝App
-function openTaobao() {
-  // 先试 taobao:// 协议
-  window.location.href = DEEP_LINK;
-  // 1.8秒后如果还在当前页（App没唤起），提示用户
-  setTimeout(function() {
-    if (!document.hidden) {
-      if (confirm('未能自动打开淘宝 App？\n点击「确定」复制淘口令，打开淘宝即可识别店铺')) {
-        copyToken();
-      }
-    }
-  }, 1800);
-}
-
 // 复制淘口令
-function copyToken() {
+function copyToken(cb) {
+  var done = function() {
+    document.getElementById('copyOk').style.display = 'block';
+    setTimeout(function() {
+      document.getElementById('copyOk').style.display = 'none';
+    }, 5000);
+    if (cb) cb();
+  };
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(TAO_TOKEN).then(function() {
-      showCopyOk();
-    }).catch(function() {
-      fallbackCopy(TAO_TOKEN);
+    navigator.clipboard.writeText(TAO_KOU_LING).then(done).catch(function() {
+      fallbackCopy(TAO_KOU_LING, done);
     });
   } else {
-    fallbackCopy(TAO_TOKEN);
+    fallbackCopy(TAO_KOU_LING, done);
   }
 }
 
-function showCopyOk() {
-  var el = document.getElementById('copyOk');
-  el.style.display = 'block';
-  setTimeout(function() { el.style.display = 'none'; }, 5000);
-}
-
-function fallbackCopy(text) {
+function fallbackCopy(text, cb) {
   var ta = document.createElement('textarea');
   ta.value = text;
   ta.style.position = 'fixed';
@@ -183,18 +142,68 @@ function fallbackCopy(text) {
   ta.select();
   try {
     document.execCommand('copy');
-    showCopyOk();
+    if (cb) cb();
   } catch(e) {
     prompt('请手动复制以下淘口令：', text);
   }
   document.body.removeChild(ta);
 }
 
-// 页面加载后，手机端自动尝试唤起（延迟800ms）
+// 打开淘宝App（多种方式尝试）
+function openTaobao() {
+  // 方式1：taobao:// 协议（直接唤起）
+  // 用通用格式，让淘宝App自己处理
+  var deepLinks = [
+    'taobao://m.taobao.com',                          // 打开淘宝首页
+    'taobao://shop.taobao.com/shop/shop_index.htm?shop_id=515102705',
+    'alipays://platformapi/startapp?appId=20000001'   // 支付宝里打开淘宝（备用）
+  ];
+  // 逐个尝试
+  var idx = 0;
+  function tryNext() {
+    if (idx >= deepLinks.length) return;
+    window.location.href = deepLinks[idx];
+    idx++;
+    setTimeout(tryNext, 600);
+  }
+  tryNext();
+}
+
+// ====== 按钮事件 ======
+
+// 【一键打开】先复制口令，再打开淘宝App
+document.getElementById('btnOneTap').addEventListener('click', function(e) {
+  e.preventDefault();
+  if (isWechat) {
+    document.getElementById('wechatTip').classList.add('show');
+    return;
+  }
+  // 先复制
+  copyToken(function() {
+    // 复制完后打开淘宝
+    setTimeout(openTaobao, 300);
+  });
+});
+
+// 【仅复制】
+document.getElementById('btnCopy').addEventListener('click', function(e) {
+  e.preventDefault();
+  copyToken();
+});
+
+// 【浏览器打开】
+document.getElementById('btnWeb').addEventListener('click', function(e) {
+  e.preventDefault();
+  window.open(SHORT_URL, '_blank');
+});
+
+// 页面加载后，手机端自动执行一键操作（延迟1秒，让用户看到页面）
 if (isMobile && !isWechat) {
   setTimeout(function() {
-    openTaobao();
-  }, 800);
+    copyToken(function() {
+      setTimeout(openTaobao, 400);
+    });
+  }, 1000);
 }
 
 // 关闭微信提示

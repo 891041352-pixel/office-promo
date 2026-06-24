@@ -25,7 +25,6 @@
     .icon { font-size: 4rem; margin-bottom: 16px; }
     h2 { font-size: 1.3rem; margin-bottom: 8px; }
     .sub { opacity: .8; font-size: .85rem; margin-bottom: 28px; }
-
     .btn {
       display: block;
       width: 100%;
@@ -46,15 +45,12 @@
       color: #fff;
       border: 1.5px solid rgba(255,255,255,.45);
     }
-
     .tip {
       margin-top: 20px;
       font-size: .78rem;
       opacity: .6;
       line-height: 1.6;
     }
-
-    /* 安卓微信提示遮罩 */
     .wechat-tip {
       display: none;
       position: fixed; top:0; left:0; right:0; bottom:0;
@@ -82,17 +78,16 @@
   </a>
 
   <a class="btn btn-secondary" id="btnWeb" href="javascript:void(0)">
-    🌐 在浏览器中查看
+    🌐 在浏览器中查看店铺
   </a>
 
   <a class="btn btn-secondary" id="btnCopy" href="javascript:void(0)">
     📋 复制店铺链接
   </a>
 
-  <p class="tip" id="tipText">如未安装淘宝 App，请选择「在浏览器中查看」</p>
+  <p class="tip">如未安装淘宝 App，请选择「在浏览器中查看」</p>
 </div>
 
-<!-- 微信提示 -->
 <div class="wechat-tip" id="wechatTip">
   <div class="arrow">↗️</div>
   请点击右上角<br/>选择「在浏览器打开」<br/>即可打开淘宝 App
@@ -101,81 +96,65 @@
 <script>
 /*
  * 淘宝店铺深度链接方案
- * 店铺：shop515102705
- * shop_id = 515102705
+ * 店铺 ID: 515102705
+ * 店铺首页（无需登录，可直接浏览宝贝）：
+ *   https://shop515102705.taobao.com
+ * 店铺所有宝贝列表页：
+ *   https://shop515102705.taobao.com/search.htm
  */
 
-const SHOP_ID = '515102705';
-const SHOP_URL = 'https://shop' + SHOP_ID + '.taobao.com/category.htm';
-const SHOP_URL_MOBILE = 'https://shop' + SHOP_ID + '.m.taobao.com';
+// 淘宝店铺直接访问链接（首页，显示所有宝贝，无需登录）
+const SHOP_HOME   = 'https://shop515102705.taobao.com';
+// 店铺商品列表页（所有宝贝）
+const SHOP_ITEMS  = 'https://shop515102705.taobao.com/search.htm';
+// 手机版淘宝店铺首页（无需登录可浏览）
+const SHOP_MOBILE = 'https://shop515102705.m.taobao.com';
 
-// 淘口令（需替换为你店铺的真实淘口令）
-// 获取方式：手机淘宝打开店铺 → 分享 → 复制链接/口令
-const TAO_KOU_LING = '【你的店铺淘口令，替换这里】';
+// 淘宝 App 深度链接（淘宝官方 schema）
+// 打开指定店铺首页
+const TAOBAO_SHOP_DEEP = 'taobao://shop.taobao.com/shop/shop_index.htm?shop_id=515102705';
 
-// 检测环境
 const ua = navigator.userAgent;
-const isWechat = /MicroMessenger/i.test(ua);
+const isWechat  = /MicroMessenger/i.test(ua);
 const isAndroid = /Android/i.test(ua);
-const isIOS = /iPhone|iPad|iPod/i.test(ua);
-const isMobile = isAndroid || isIOS;
-
-// 淘宝 Deep Link（官方格式）
-// taobao://shop.taobao.com/shop/shop_index.htm?shop_id=XXX
-const TAOBAO_DEEP_LINK = 'taobao://shop.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
-
-// 备用：淘宝 universal link（iOS）
-const TAOBAO_UNIVERSAL = 'https://shop.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
+const isIOS     = /iPhone|iPad|iPod/i.test(ua);
+const isMobile  = isAndroid || isIOS;
 
 /* ===== 按钮1：打开手机淘宝 App ===== */
 document.getElementById('btnApp').addEventListener('click', function() {
   if (isWechat) {
-    // 微信内：提示在浏览器打开
     document.getElementById('wechatTip').classList.add('show');
     return;
   }
-
   if (isMobile) {
-    // 手机：先尝试 deep link
-    // iOS 需要稍微不同的处理
-    if (isIOS) {
-      // iOS：先试 universal link，失败再试 schema
-      window.location.href = TAOBAO_DEEP_LINK;
-      setTimeout(function() {
-        // 如果1.5秒后还在当前页，说明没装上淘宝，跳网页版
-        if (document.hidden === false) {
-          window.location.href = SHOP_URL_MOBILE;
-        }
-      }, 1500);
-    } else {
-      // Android：直接试 schema
-      window.location.href = TAOBAO_DEEP_LINK;
-      setTimeout(function() {
-        if (document.hidden === false) {
-          window.location.href = SHOP_URL_MOBILE;
-        }
-      }, 1500);
-    }
+    // 先尝试 taobao:// schema 唤起
+    window.location.href = TAOBAO_SHOP_DEEP;
+    // 1.5 秒后检测是否成功唤起
+    setTimeout(function() {
+      if (!document.hidden) {
+        // 唤起失败，跳手机版店铺（会提示打开App）
+        window.location.href = SHOP_MOBILE;
+      }
+    }, 1500);
   } else {
-    // 电脑：直接跳网页版
-    window.open(SHOP_URL, '_blank');
+    // 电脑：直接打开店铺首页
+    window.open(SHOP_HOME, '_blank');
   }
 });
 
 /* ===== 按钮2：在浏览器中查看 ===== */
 document.getElementById('btnWeb').addEventListener('click', function() {
   if (isMobile) {
-    // 手机浏览器：用 m.taobao.com 移动版（会提示打开App）
-    window.location.href = SHOP_URL_MOBILE;
+    // 手机浏览器：直接去手机版店铺首页（无需登录可浏览宝贝）
+    window.location.href = SHOP_MOBILE;
   } else {
-    window.open(SHOP_URL, '_blank');
+    window.open(SHOP_HOME, '_blank');
   }
 });
 
 /* ===== 按钮3：复制店铺链接 ===== */
 document.getElementById('btnCopy').addEventListener('click', function() {
-  const textToCopy = isMobile ? SHOP_URL_MOBILE : SHOP_URL;
-
+  var textToCopy = isMobile ? SHOP_MOBILE : SHOP_HOME;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(textToCopy).then(function() {
       alert('链接已复制！\n请打开手机淘宝 App，粘贴到搜索框');
@@ -196,22 +175,11 @@ function fallbackCopy(text) {
   ta.select();
   try {
     document.execCommand('copy');
-    alert('链接已复制！\n请打开手机淘宝 App，粘贴到搜索框');
+    alert('链接已复制！\n请打开手机淘宝 App 粘贴到搜索框');
   } catch(e) {
     prompt('请手动复制以下链接：', text);
   }
   document.body.removeChild(ta);
-}
-
-/* ===== 自动尝试（页面加载后）===== */
-// 手机端自动尝试打开App（延迟1秒，让用户看到页面）
-if (isMobile && !isWechat) {
-  setTimeout(function() {
-    // 静默尝试打开淘宝App
-    var hiddenBefore = document.hidden;
-    window.location.href = TAOBAO_DEEP_LINK;
-    // 不处理失败情况，用户自行点击按钮
-  }, 800);
 }
 
 /* ===== 点击微信提示关闭 ===== */

@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>跳转到淘宝店铺</title>
-  <!-- 禁止被百度收录跳转页 -->
+  <title>正在前往淘宝店铺...</title>
   <meta name="robots" content="noindex, nofollow" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin:0; padding:0; }
     body {
-      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
       background: linear-gradient(135deg, #ff5000 0%, #ff6900 100%);
       color: #fff;
       display: flex;
@@ -21,10 +20,11 @@
       text-align: center;
       padding: 40px 24px;
       max-width: 380px;
+      width: 100%;
     }
     .icon { font-size: 4rem; margin-bottom: 16px; }
-    h2 { font-size: 1.3rem; margin-bottom: 12px; }
-    p { opacity: .85; font-size: .9rem; margin-bottom: 24px; line-height: 1.6; }
+    h2 { font-size: 1.3rem; margin-bottom: 8px; }
+    .sub { opacity: .8; font-size: .85rem; margin-bottom: 28px; }
 
     .btn {
       display: block;
@@ -39,168 +39,186 @@
       margin-bottom: 12px;
       transition: opacity .2s;
     }
-    .btn:active { opacity: .8; }
-    .btn-primary {
-      background: #fff;
-      color: #ff5000;
-    }
+    .btn:active { opacity: .7; }
+    .btn-primary { background: #fff; color: #ff5000; }
     .btn-secondary {
-      background: rgba(255,255,255,.2);
+      background: rgba(255,255,255,.18);
       color: #fff;
-      border: 1px solid rgba(255,255,255,.4);
-    }
-
-    .copy-box {
-      background: rgba(0,0,0,.15);
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin: 12px 0;
-      word-break: break-all;
-      font-size: .85rem;
-      opacity: .9;
+      border: 1.5px solid rgba(255,255,255,.45);
     }
 
     .tip {
       margin-top: 20px;
       font-size: .78rem;
       opacity: .6;
+      line-height: 1.6;
     }
+
+    /* 安卓微信提示遮罩 */
+    .wechat-tip {
+      display: none;
+      position: fixed; top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,.75);
+      z-index: 999;
+      color: #fff;
+      text-align: center;
+      padding-top: 60px;
+      font-size: 1.05rem;
+      line-height: 2;
+    }
+    .wechat-tip.show { display: block; }
+    .arrow { font-size: 2.5rem; }
   </style>
 </head>
 <body>
-<div class="box" id="main">
+
+<div class="box" id="mainBox">
   <div class="icon">🛒</div>
-  <h2 id="title">正在打开淘宝店铺…</h2>
-  <p id="desc">如果未自动跳转，请点击下方按钮</p>
+  <h2>正在前往淘宝店铺</h2>
+  <p class="sub">请选择打开方式</p>
 
-  <a class="btn btn-primary" id="btnApp" href="#" style="display:none">📱 打开手机淘宝</a>
-  <a class="btn btn-secondary" id="btnWeb" href="#" style="display:none">🌐 浏览器打开</a>
+  <a class="btn btn-primary" id="btnApp" href="javascript:void(0)">
+    📱 打开手机淘宝 App
+  </a>
 
-  <div class="copy-box" id="copyBox" style="display:none">
-    <div>淘口令（复制后打开淘宝）：</div>
-    <div id="taoCode" style="font-weight:700;margin-top:4px;"></div>
-    <button class="btn btn-secondary" id="btnCopy" style="margin-top:10px;font-size:.9rem;">📋 复制淘口令</button>
-  </div>
+  <a class="btn btn-secondary" id="btnWeb" href="javascript:void(0)">
+    🌐 在浏览器中查看
+  </a>
 
-  <div class="tip" id="wechatTip" style="display:none">💡 微信内无法直接跳转，请点击右上角「在浏览器中打开」</div>
+  <a class="btn btn-secondary" id="btnCopy" href="javascript:void(0)">
+    📋 复制店铺链接
+  </a>
+
+  <p class="tip" id="tipText">如未安装淘宝 App，请选择「在浏览器中查看」</p>
 </div>
 
-<div id="success" style="display:none;text-align:center;padding:40px 24px;">
-  <div class="icon">✅</div>
-  <h2>正在跳转中…</h2>
-  <p>如果长时间未响应，请检查是否安装了手机淘宝App</p>
-  <a class="btn btn-secondary" id="retryBtn" href="#">🔄 重新尝试</a>
+<!-- 微信提示 -->
+<div class="wechat-tip" id="wechatTip">
+  <div class="arrow">↗️</div>
+  请点击右上角<br/>选择「在浏览器打开」<br/>即可打开淘宝 App
 </div>
 
 <script>
-(function () {
-  // ── 你的淘宝店铺信息 ──
-  var SHOP_ID   = '515102705';
-  var SHOP_URL  = 'https://shop515102705.taobao.com';
-  var SHOP_MURL = 'https://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
-  // 店铺淘口令文案（如果知道具体口令可替换）
-  var TAO_CODE = '39₴3X2oWFgMlkJ£ https://m.tb.cn/h.xxxxx  正版Office激活码 Windows系统密钥';
+/*
+ * 淘宝店铺深度链接方案
+ * 店铺：shop515102705
+ * shop_id = 515102705
+ */
 
-  // ── 设备检测 ──
-  var ua       = navigator.userAgent;
-  var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(ua);
-  var isIOS    = /iPhone|iPad|iPod/i.test(ua);
-  var isAndroid= /Android/i.test(ua);
-  var isWechat = /MicroMessenger/i.test(ua);
-  var isQQ     = /QQ\//i.test(ua);
+const SHOP_ID = '515102705';
+const SHOP_URL = 'https://shop' + SHOP_ID + '.taobao.com/category.htm';
+const SHOP_URL_MOBILE = 'https://shop' + SHOP_ID + '.m.taobao.com';
 
-  var $id      = function(id) { return document.getElementById(id); };
+// 淘口令（需替换为你店铺的真实淘口令）
+// 获取方式：手机淘宝打开店铺 → 分享 → 复制链接/口令
+const TAO_KOU_LING = '【你的店铺淘口令，替换这里】';
 
-  // ── 微信/QQ 内：显示提示 ──
-  if (isWechat || isQQ) {
-    $id('title').textContent   = '请使用浏览器打开';
-    $id('desc').textContent    = '微信/QQ内无法直接跳转淘宝，请按下方说明操作';
-    $id('wechatTip').style.display = 'block';
-    $id('btnWeb').href         = SHOP_MURL;
-    $id('btnWeb').textContent  = '🌐 手机浏览器打开';
-    $id('btnWeb').style.display = 'inline-block';
-    $id('copyBox').style.display = 'block';
-    $id('taoCode').textContent = TAO_CODE;
-    $id('btnCopy').onclick = function() {
-      copyText(TAO_CODE);
-      $id('btnCopy').textContent = '✅ 已复制，打开淘宝即可';
-    };
+// 检测环境
+const ua = navigator.userAgent;
+const isWechat = /MicroMessenger/i.test(ua);
+const isAndroid = /Android/i.test(ua);
+const isIOS = /iPhone|iPad|iPod/i.test(ua);
+const isMobile = isAndroid || isIOS;
+
+// 淘宝 Deep Link（官方格式）
+// taobao://shop.taobao.com/shop/shop_index.htm?shop_id=XXX
+const TAOBAO_DEEP_LINK = 'taobao://shop.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
+
+// 备用：淘宝 universal link（iOS）
+const TAOBAO_UNIVERSAL = 'https://shop.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
+
+/* ===== 按钮1：打开手机淘宝 App ===== */
+document.getElementById('btnApp').addEventListener('click', function() {
+  if (isWechat) {
+    // 微信内：提示在浏览器打开
+    document.getElementById('wechatTip').classList.add('show');
     return;
   }
 
-  // ── 桌面端：直接跳转网页 ──
-  if (!isMobile) {
-    window.location.href = SHOP_URL;
-    return;
-  }
-
-  // ── 手机浏览器：尝试唤起App ──
-
-  // 显示按钮（兜底）
-  $id('btnApp').href        = SHOP_MURL;
-  $id('btnApp').style.display = 'inline-block';
-  $id('btnWeb').href        = SHOP_URL;
-  $id('btnWeb').style.display = 'inline-block';
-
-  // ── 策略1: iframe 唤起（不跳转页面，更温和） ──
-  function openApp(murl) {
-    try {
-      // Android: 用 intent 方式
-      if (isAndroid) {
-        var iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = 'intent://' + murl.replace('https://','') +
-          '#Intent;scheme=https;package=com.taobao.taobao;S.browser_fallback_url=' +
-          encodeURIComponent(SHOP_MURL) + ';end';
-        document.body.appendChild(iframe);
-        setTimeout(function() {
-          iframe.parentNode && iframe.parentNode.removeChild(iframe);
-        }, 5000);
-      }
-      // iOS: 直接跳转 m.taobao.com（iOS 会尝试 Universal Link）
-      else {
-        window.location.href = murl;
-      }
-    } catch(e) {
-      window.location.href = murl;
-    }
-  }
-
-  // ── 自动尝试 ──
-  var startTime = Date.now();
-  openApp(SHOP_MURL);
-
-  // 如果 2.5 秒后还在当前页面，说明没唤起成功，显示手动按钮
-  setTimeout(function() {
-    if (Date.now() - startTime > 2000) {
-      $id('title').textContent = '即将打开店铺';
-      $id('desc').textContent  = '点击下方按钮前往';
-    }
-  }, 2500);
-
-  // ── 复制辅助 ──
-  function copyText(text) {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text);
+  if (isMobile) {
+    // 手机：先尝试 deep link
+    // iOS 需要稍微不同的处理
+    if (isIOS) {
+      // iOS：先试 universal link，失败再试 schema
+      window.location.href = TAOBAO_DEEP_LINK;
+      setTimeout(function() {
+        // 如果1.5秒后还在当前页，说明没装上淘宝，跳网页版
+        if (document.hidden === false) {
+          window.location.href = SHOP_URL_MOBILE;
+        }
+      }, 1500);
     } else {
-      var ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
+      // Android：直接试 schema
+      window.location.href = TAOBAO_DEEP_LINK;
+      setTimeout(function() {
+        if (document.hidden === false) {
+          window.location.href = SHOP_URL_MOBILE;
+        }
+      }, 1500);
     }
+  } else {
+    // 电脑：直接跳网页版
+    window.open(SHOP_URL, '_blank');
   }
+});
 
-  // ── 重试按钮 ──
-  $id('retryBtn').onclick = function(e) {
-    e.preventDefault();
-    openApp(SHOP_MURL);
-  };
+/* ===== 按钮2：在浏览器中查看 ===== */
+document.getElementById('btnWeb').addEventListener('click', function() {
+  if (isMobile) {
+    // 手机浏览器：用 m.taobao.com 移动版（会提示打开App）
+    window.location.href = SHOP_URL_MOBILE;
+  } else {
+    window.open(SHOP_URL, '_blank');
+  }
+});
 
-})();
+/* ===== 按钮3：复制店铺链接 ===== */
+document.getElementById('btnCopy').addEventListener('click', function() {
+  const textToCopy = isMobile ? SHOP_URL_MOBILE : SHOP_URL;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textToCopy).then(function() {
+      alert('链接已复制！\n请打开手机淘宝 App，粘贴到搜索框');
+    }).catch(function() {
+      fallbackCopy(textToCopy);
+    });
+  } else {
+    fallbackCopy(textToCopy);
+  }
+});
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    alert('链接已复制！\n请打开手机淘宝 App，粘贴到搜索框');
+  } catch(e) {
+    prompt('请手动复制以下链接：', text);
+  }
+  document.body.removeChild(ta);
+}
+
+/* ===== 自动尝试（页面加载后）===== */
+// 手机端自动尝试打开App（延迟1秒，让用户看到页面）
+if (isMobile && !isWechat) {
+  setTimeout(function() {
+    // 静默尝试打开淘宝App
+    var hiddenBefore = document.hidden;
+    window.location.href = TAOBAO_DEEP_LINK;
+    // 不处理失败情况，用户自行点击按钮
+  }, 800);
+}
+
+/* ===== 点击微信提示关闭 ===== */
+document.getElementById('wechatTip').addEventListener('click', function() {
+  this.classList.remove('show');
+});
 </script>
+
 </body>
 </html>

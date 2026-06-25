@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>正在前往淘宝店铺...</title>
+  <title>前往店铺</title>
   <meta name="robots" content="noindex, nofollow" />
   <style>
     * { box-sizing: border-box; margin:0; padding:0; }
@@ -11,205 +11,169 @@
       font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
       background: linear-gradient(135deg, #ff5000 0%, #ff6900 100%);
       color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       min-height: 100vh;
+      overflow: hidden;
     }
-    .box {
-      text-align: center;
-      padding: 40px 24px;
-      max-width: 380px;
-      width: 100%;
-    }
+    .box { text-align: center; padding: 40px 24px; max-width: 380px; width: 100%; }
     .icon { font-size: 4rem; margin-bottom: 16px; }
-    h2 { font-size: 1.3rem; margin-bottom: 8px; }
-    .sub { opacity: .8; font-size: .85rem; margin-bottom: 28px; line-height: 1.6; }
+    h2 { font-size: 1.25rem; margin-bottom: 6px; }
+    .loading { margin: 24px 0; display: flex; justify-content: center; gap: 8px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#fff; animation: bounce 0.6s infinite alternate; }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { from { opacity:0.2; transform:translateY(4px); } to { opacity:1; transform:translateY(-4px); } }
     .btn {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      border-radius: 50px;
-      font-size: 1.05rem;
-      font-weight: 700;
-      text-decoration: none;
-      cursor: pointer;
-      border: none;
-      margin-bottom: 12px;
+      display: block; width: 100%; padding: 14px; border-radius: 50px;
+      font-size: 1.05rem; font-weight: 700; text-decoration: none;
+      cursor: pointer; border: none; margin: 8px 0;
       transition: opacity .2s;
     }
     .btn:active { opacity: .7; }
     .btn-primary { background: #fff; color: #ff5000; }
-    .btn-secondary {
-      background: rgba(255,255,255,.18);
-      color: #fff;
-      border: 1.5px solid rgba(255,255,255,.45);
-    }
-    .tip {
-      margin-top: 20px;
-      font-size: .78rem;
-      opacity: .6;
-      line-height: 1.6;
-    }
-    .wechat-tip {
-      display: none;
-      position: fixed; top:0; left:0; right:0; bottom:0;
-      background: rgba(0,0,0,.75);
-      z-index: 999;
-      color: #fff;
-      text-align: center;
-      padding-top: 60px;
-      font-size: 1.05rem;
-      line-height: 2;
-    }
-    .wechat-tip.show { display: block; }
-    .arrow { font-size: 2.5rem; }
-    #copyOk { display:none; margin-top:12px; font-size:.85rem; opacity:.9; }
+    .btn-secondary { background: rgba(255,255,255,.18); color: #fff; border: 1.5px solid rgba(255,255,255,.45); }
+    .tip { margin-top: 16px; font-size: .78rem; opacity: .6; line-height: 1.6; }
+    iframe { display:none; }
   </style>
 </head>
 <body>
 
-<div class="box" id="mainBox">
+<!-- 隐藏 iframe，用于触发淘宝 App Link -->
+<iframe id="tbFrame" src="about:blank" style="display:none;"></iframe>
+
+<div class="box">
   <div class="icon">🛒</div>
-  <h2>正在前往淘宝店铺</h2>
-  <p class="sub">点击按钮，自动复制口令并打开淘宝</p>
+  <h2>正在前往淘宝店铺...</h2>
+  <p class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></p>
+  <p class="tip" id="status">检测到已安装淘宝 App，正在自动打开...</p>
 
-  <!-- 主按钮：一键复制+打开 -->
-  <a class="btn btn-primary" id="btnOneTap">
-    📱 一键打开淘宝（复制口令+打开App）
+  <a class="btn btn-primary" id="btnOpen" style="display:none;">
+    📱 重新打开淘宝 App
   </a>
-
-  <a class="btn btn-secondary" id="btnCopy">
-    📋 仅复制淘口令
+  <a class="btn btn-secondary" id="btnWeb" style="display:none;">
+    🌐 在浏览器中查看
   </a>
-
-  <a class="btn btn-secondary" id="btnWeb">
-    🌐 在浏览器中打开（需登录）
+  <a class="btn btn-secondary" id="btnCopy" style="display:none;">
+    📋 复制店铺链接
   </a>
-
-  <p class="tip">
-    点击「一键打开淘宝」后：<br/>
-    ① 淘口令已自动复制<br/>
-    ② 淘宝App会自动打开并识别口令<br/>
-    如未安装淘宝App，请选择「在浏览器中打开」
-  </p>
-  <p id="copyOk">✅ 淘口令已复制！淘宝App正在打开...</p>
-</div>
-
-<div class="wechat-tip" id="wechatTip">
-  <div class="arrow">↗️</div>
-  请点击右上角<br/>选择「在浏览器打开」<br/>即可打开淘宝 App
 </div>
 
 <script>
-// ====== 配置区（请按需修改）======
-// 淘口令：从淘宝App分享 → 复制链接 获取
-var TAO_KOU_LING = '78eAGBgiY80xS';
-// 店铺短链（备用）
+// ====== 配置 ======
+var SHOP_ID = '515102705';
+// 正确格式：https://shop.m.taobao.com/shop/shop_index.htm?shop_id=xxx
+// 这个链接会被淘宝 App Link 自动拦截，在 App 内打开店铺
+var SHOP_URL = 'https://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
+// taobao:// 协议格式
+var DEEP_LINK = 'taobao://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
+// 短链备用
 var SHORT_URL = 'https://m.tb.cn/h.RIumfvgKR02Togn';
-// ==================================
+// ==================
 
-var ua       = navigator.userAgent;
+var ua = navigator.userAgent;
 var isWechat = /MicroMessenger/i.test(ua);
 var isAndroid = /Android/i.test(ua);
-var isIOS    = /iPhone|iPad|iPod/i.test(ua);
+var isIOS = /iPhone|iPad|iPod/i.test(ua);
 var isMobile = isAndroid || isIOS;
+var opened = false;
 
-// 复制淘口令
-function copyToken(cb) {
-  var done = function() {
-    document.getElementById('copyOk').style.display = 'block';
+// 微信内提示
+if (isWechat) {
+  document.getElementById('status').innerHTML =
+    '⚠️ 微信内无法直接打开淘宝<br/>请点击右上角「...」→「在浏览器打开」';
+  document.getElementById('btnOpen').style.display = 'none';
+  document.getElementById('btnWeb').style.display = 'block';
+  document.getElementById('btnWeb').textContent = '🌐 在浏览器中打开';
+  document.querySelector('.loading').style.display = 'none';
+}
+
+// ====== 自动打开逻辑 ======
+function tryOpen() {
+  if (opened) return;
+  opened = true;
+
+  if (isWechat) return;
+
+  // 方式1：taobao:// 协议直接唤起
+  document.getElementById('status').textContent = '检测到已安装淘宝 App，正在自动打开...';
+  window.location.href = DEEP_LINK;
+
+  // 方式2：如果 taobao:// 没成功（1.5秒后页面还在），用 https:// App Link
+  setTimeout(function() {
+    if (document.hidden) return;
+    // 尝试用 https:// 格式的 App Link
+    var iframe = document.getElementById('tbFrame');
+    iframe.src = SHOP_URL;
+
     setTimeout(function() {
-      document.getElementById('copyOk').style.display = 'none';
-    }, 5000);
-    if (cb) cb();
-  };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(TAO_KOU_LING).then(done).catch(function() {
-      fallbackCopy(TAO_KOU_LING, done);
-    });
-  } else {
-    fallbackCopy(TAO_KOU_LING, done);
-  }
+      if (document.hidden) return;
+      // 两种方式都没唤起，显示手动按钮
+      document.getElementById('status').textContent =
+        '未检测到淘宝 App？请手动选择：';
+      document.querySelector('.loading').style.display = 'none';
+      document.getElementById('btnOpen').style.display = 'block';
+      document.getElementById('btnWeb').style.display = 'block';
+      document.getElementById('btnCopy').style.display = 'block';
+    }, 1500);
+  }, 1500);
 }
 
-function fallbackCopy(text, cb) {
-  var ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.select();
-  try {
-    document.execCommand('copy');
-    if (cb) cb();
-  } catch(e) {
-    prompt('请手动复制以下淘口令：', text);
+// 显示手动按钮的回退函数（App Link 成功后页面隐藏，不会调用）
+setTimeout(function() {
+  if (!document.hidden && !opened) {
+    opened = true;
+    document.getElementById('status').textContent = '未检测到淘宝 App？请手动选择：';
+    document.querySelector('.loading').style.display = 'none';
+    document.getElementById('btnOpen').style.display = 'block';
+    document.getElementById('btnWeb').style.display = 'block';
+    document.getElementById('btnCopy').style.display = 'block';
   }
-  document.body.removeChild(ta);
-}
+}, 4000);
 
-// 打开淘宝App（多种方式尝试）
-function openTaobao() {
-  // 方式1：taobao:// 协议（直接唤起）
-  // 用通用格式，让淘宝App自己处理
-  var deepLinks = [
-    'taobao://m.taobao.com',                          // 打开淘宝首页
-    'taobao://shop.taobao.com/shop/shop_index.htm?shop_id=515102705',
-    'alipays://platformapi/startapp?appId=20000001'   // 支付宝里打开淘宝（备用）
-  ];
-  // 逐个尝试
-  var idx = 0;
-  function tryNext() {
-    if (idx >= deepLinks.length) return;
-    window.location.href = deepLinks[idx];
-    idx++;
-    setTimeout(tryNext, 600);
-  }
-  tryNext();
+// 开始自动跳转
+if (isMobile && !isWechat) {
+  tryOpen();
 }
 
 // ====== 按钮事件 ======
-
-// 【一键打开】先复制口令，再打开淘宝App
-document.getElementById('btnOneTap').addEventListener('click', function(e) {
+document.getElementById('btnOpen').addEventListener('click', function(e) {
   e.preventDefault();
-  if (isWechat) {
-    document.getElementById('wechatTip').classList.add('show');
-    return;
-  }
-  // 先复制
-  copyToken(function() {
-    // 复制完后打开淘宝
-    setTimeout(openTaobao, 300);
-  });
+  window.location.href = DEEP_LINK;
+  setTimeout(function() {
+    window.open(SHOP_URL, '_blank');
+  }, 1500);
 });
 
-// 【仅复制】
-document.getElementById('btnCopy').addEventListener('click', function(e) {
-  e.preventDefault();
-  copyToken();
-});
-
-// 【浏览器打开】
 document.getElementById('btnWeb').addEventListener('click', function(e) {
   e.preventDefault();
   window.open(SHORT_URL, '_blank');
 });
 
-// 页面加载后，手机端自动执行一键操作（延迟1秒，让用户看到页面）
-if (isMobile && !isWechat) {
-  setTimeout(function() {
-    copyToken(function() {
-      setTimeout(openTaobao, 400);
+document.getElementById('btnCopy').addEventListener('click', function(e) {
+  e.preventDefault();
+  copyText(SHOP_URL, '店铺链接已复制！请打开手机淘宝粘贴到搜索框');
+});
+
+function copyText(text, msg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      alert(msg);
+    }).catch(function() {
+      fallbackCopy(text, msg);
     });
-  }, 1000);
+  } else {
+    fallbackCopy(text, msg);
+  }
 }
 
-// 关闭微信提示
-document.getElementById('wechatTip').addEventListener('click', function() {
-  this.classList.remove('show');
-});
+function fallbackCopy(text, msg) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); alert(msg); }
+  catch(e) { prompt('请手动复制：', text); }
+  document.body.removeChild(ta);
+}
 </script>
 </body>
 </html>

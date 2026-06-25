@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>前往店铺</title>
+  <title>正在前往淘宝店铺...</title>
   <meta name="robots" content="noindex, nofollow" />
   <style>
     * { box-sizing: border-box; margin:0; padding:0; }
@@ -13,17 +13,17 @@
       color: #fff;
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh;
+      overflow: hidden;
     }
     .box { text-align: center; padding: 40px 24px; max-width: 380px; width: 100%; }
     .icon { font-size: 4rem; margin-bottom: 16px; }
-    h2 { font-size: 1.2rem; margin-bottom: 20px; }
-    .card {
-      background: rgba(255,255,255,0.12);
-      border-radius: 16px; padding: 20px;
-      margin: 16px 0; text-align: left;
-      line-height: 1.8;
-    }
-    .card .big { font-size: 1.5rem; font-weight: 700; color: #FFD700; display: block; margin: 8px 0; }
+    h2 { font-size: 1.25rem; margin-bottom: 8px; }
+    .sub { opacity: .8; font-size: .85rem; margin-bottom: 24px; line-height: 1.6; }
+    .loading { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#fff; animation: bounce 0.6s infinite alternate; }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { from { opacity:0.2; transform:translateY(4px); } to { opacity:1; transform:translateY(-4px); } }
     .btn {
       display: block; width: 100%; padding: 14px; border-radius: 50px;
       font-size: 1.05rem; font-weight: 700; text-decoration: none;
@@ -33,71 +33,93 @@
     .btn:active { opacity: .7; }
     .btn-primary { background: #fff; color: #ff5000; }
     .btn-secondary { background: rgba(255,255,255,.18); color: #fff; border: 1.5px solid rgba(255,255,255,.45); }
-    .badge { display:inline-block; background:#FFD700; color:#cc3300; padding:3px 10px; border-radius:10px; font-size:.75rem; font-weight:700; margin-left:6px; vertical-align:middle; }
   </style>
 </head>
 <body>
 
-<div class="box">
+<div class="box" id="mainBox">
   <div class="icon">🛒</div>
-  <h2>前往店铺购买</h2>
-
-  <!-- 卡片：店铺信息 -->
-  <div class="card">
-    <span style="font-size:.85rem;opacity:.8;">店铺地址</span>
-    <span class="big">shop515102705.taobao.com</span>
-    <span style="font-size:.8rem;opacity:.7;">复制链接 → 打开淘宝 → 粘贴搜索</span>
+  <h2 id="title">正在前往淘宝店铺...</h2>
+  <p class="sub" id="subtitle">自动跳转中，请稍候</p>
+  <div class="loading" id="loadingDots">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
   </div>
 
-  <!-- 按钮 -->
-  <a class="btn btn-primary" id="btnCopy">
+  <a class="btn btn-primary" id="btnOpen" style="display:none">
+    📱 重新打开淘宝 App
+  </a>
+  <a class="btn btn-secondary" id="btnCopy" style="display:none">
     📋 复制店铺链接
   </a>
-
-  <a class="btn btn-secondary" id="btnOpen">
-    📱 打开手机淘宝
-  </a>
-
-  <p style="margin-top:20px;font-size:.78rem;opacity:.6;line-height:1.8;">
-    ⚠️ 如跳转后要求登录<br/>
-    <b>请使用「复制店铺链接」方式</b><br/>
-    复制后打开淘宝粘贴即可
-  </p>
 </div>
 
 <script>
-var SHOP_URL = 'https://shop.m.taobao.com/shop/shop_index.htm?shop_id=515102705';
+var SHOP_ID   = '515102705';
+var SHOP_URL  = 'https://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
+var DEEP_LINK = 'taobao://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
 
-document.getElementById('btnCopy').addEventListener('click', function(e) {
-  e.preventDefault();
-  copyText(SHOP_URL, '链接已复制！\n请打开手机淘宝 App → 粘贴到搜索框 → 进入店铺');
-});
+var ua        = navigator.userAgent;
+var isWechat  = /MicroMessenger/i.test(ua);
+var isAndroid = /Android/i.test(ua);
+var isIOS     = /iPhone|iPad|iPod/i.test(ua);
+var isMobile  = isAndroid || isIOS;
 
+// 微信提示
+if (isWechat) {
+  document.getElementById('title').textContent = '⚠️ 请在浏览器中打开';
+  document.getElementById('subtitle').textContent = '微信内无法直接跳转淘宝，请点击右上角 ··· → 在浏览器打开';
+  document.getElementById('loadingDots').style.display = 'none';
+  document.getElementById('btnCopy').style.display = 'block';
+  document.getElementById('btnCopy').textContent = '📋 复制店铺链接（推荐）';
+}
+
+// 自动跳转
+function autoOpen() {
+  if (isWechat) return;
+  window.location.href = DEEP_LINK;
+}
+
+// 检测跳转是否成功
+function checkOpen() {
+  if (isWechat || document.hidden) return;
+
+  document.getElementById('title').textContent = '未检测到淘宝 App';
+  document.getElementById('subtitle').textContent = '请手动选择以下方式打开店铺';
+  document.getElementById('loadingDots').style.display = 'none';
+  document.getElementById('btnOpen').style.display = 'block';
+  document.getElementById('btnCopy').style.display = 'block';
+}
+
+if (isMobile && !isWechat) {
+  setTimeout(autoOpen, 300);
+  setTimeout(checkOpen, 2500);
+}
+
+// 按钮事件
 document.getElementById('btnOpen').addEventListener('click', function(e) {
   e.preventDefault();
-  // 先尝试 taobao:// 协议
-  window.location.href = 'taobao://shop.m.taobao.com/shop/shop_index.htm?shop_id=515102705';
-  // 1.5秒后如果不成功，用浏览器打开
+  window.location.href = DEEP_LINK;
   setTimeout(function() {
-    if (!document.hidden) {
-      window.open(SHOP_URL, '_blank');
-    }
+    if (!document.hidden) window.open(SHOP_URL, '_blank');
   }, 1500);
 });
 
-function copyText(text, msg) {
+document.getElementById('btnCopy').addEventListener('click', function(e) {
+  e.preventDefault();
+  var text = SHOP_URL;
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function() { alert(msg); })
-      .catch(function() { fallbackCopy(text, msg); });
-  } else { fallbackCopy(text, msg); }
-}
+    navigator.clipboard.writeText(text).then(function() {
+      alert('店铺链接已复制！\n请打开手机淘宝 App → 粘贴到搜索框');
+    }).catch(function() { fallbackCopy(text); });
+  } else { fallbackCopy(text); }
+});
 
-function fallbackCopy(text, msg) {
+function fallbackCopy(text) {
   var ta = document.createElement('textarea');
   ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
   document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); alert(msg); }
-  catch(e) { prompt('请手动复制：', text); }
+  try { document.execCommand('copy'); alert('店铺链接已复制！\n请打开手机淘宝 App → 粘贴到搜索框'); }
+  catch(e) { prompt('请手动复制以下链接：', text); }
   document.body.removeChild(ta);
 }
 </script>

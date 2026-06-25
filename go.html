@@ -13,16 +13,17 @@
       color: #fff;
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh;
-      overflow: hidden;
     }
     .box { text-align: center; padding: 40px 24px; max-width: 380px; width: 100%; }
     .icon { font-size: 4rem; margin-bottom: 16px; }
-    h2 { font-size: 1.25rem; margin-bottom: 6px; }
-    .loading { margin: 24px 0; display: flex; justify-content: center; gap: 8px; }
-    .dot { width:10px; height:10px; border-radius:50%; background:#fff; animation: bounce 0.6s infinite alternate; }
-    .dot:nth-child(2) { animation-delay: 0.15s; }
-    .dot:nth-child(3) { animation-delay: 0.3s; }
-    @keyframes bounce { from { opacity:0.2; transform:translateY(4px); } to { opacity:1; transform:translateY(-4px); } }
+    h2 { font-size: 1.2rem; margin-bottom: 20px; }
+    .card {
+      background: rgba(255,255,255,0.12);
+      border-radius: 16px; padding: 20px;
+      margin: 16px 0; text-align: left;
+      line-height: 1.8;
+    }
+    .card .big { font-size: 1.5rem; font-weight: 700; color: #FFD700; display: block; margin: 8px 0; }
     .btn {
       display: block; width: 100%; padding: 14px; border-radius: 50px;
       font-size: 1.05rem; font-weight: 700; text-decoration: none;
@@ -32,138 +33,63 @@
     .btn:active { opacity: .7; }
     .btn-primary { background: #fff; color: #ff5000; }
     .btn-secondary { background: rgba(255,255,255,.18); color: #fff; border: 1.5px solid rgba(255,255,255,.45); }
-    .tip { margin-top: 16px; font-size: .78rem; opacity: .6; line-height: 1.6; }
-    iframe { display:none; }
+    .badge { display:inline-block; background:#FFD700; color:#cc3300; padding:3px 10px; border-radius:10px; font-size:.75rem; font-weight:700; margin-left:6px; vertical-align:middle; }
   </style>
 </head>
 <body>
 
-<!-- 隐藏 iframe，用于触发淘宝 App Link -->
-<iframe id="tbFrame" src="about:blank" style="display:none;"></iframe>
-
 <div class="box">
   <div class="icon">🛒</div>
-  <h2>正在前往淘宝店铺...</h2>
-  <p class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></p>
-  <p class="tip" id="status">检测到已安装淘宝 App，正在自动打开...</p>
+  <h2>前往店铺购买</h2>
 
-  <a class="btn btn-primary" id="btnOpen" style="display:none;">
-    📱 重新打开淘宝 App
-  </a>
-  <a class="btn btn-secondary" id="btnWeb" style="display:none;">
-    🌐 在浏览器中查看
-  </a>
-  <a class="btn btn-secondary" id="btnCopy" style="display:none;">
+  <!-- 卡片：店铺信息 -->
+  <div class="card">
+    <span style="font-size:.85rem;opacity:.8;">店铺地址</span>
+    <span class="big">shop515102705.taobao.com</span>
+    <span style="font-size:.8rem;opacity:.7;">复制链接 → 打开淘宝 → 粘贴搜索</span>
+  </div>
+
+  <!-- 按钮 -->
+  <a class="btn btn-primary" id="btnCopy">
     📋 复制店铺链接
   </a>
+
+  <a class="btn btn-secondary" id="btnOpen">
+    📱 打开手机淘宝
+  </a>
+
+  <p style="margin-top:20px;font-size:.78rem;opacity:.6;line-height:1.8;">
+    ⚠️ 如跳转后要求登录<br/>
+    <b>请使用「复制店铺链接」方式</b><br/>
+    复制后打开淘宝粘贴即可
+  </p>
 </div>
 
 <script>
-// ====== 配置 ======
-var SHOP_ID = '515102705';
-// 正确格式：https://shop.m.taobao.com/shop/shop_index.htm?shop_id=xxx
-// 这个链接会被淘宝 App Link 自动拦截，在 App 内打开店铺
-var SHOP_URL = 'https://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
-// taobao:// 协议格式
-var DEEP_LINK = 'taobao://shop.m.taobao.com/shop/shop_index.htm?shop_id=' + SHOP_ID;
-// 短链备用
-var SHORT_URL = 'https://m.tb.cn/h.RIumfvgKR02Togn';
-// ==================
-
-var ua = navigator.userAgent;
-var isWechat = /MicroMessenger/i.test(ua);
-var isAndroid = /Android/i.test(ua);
-var isIOS = /iPhone|iPad|iPod/i.test(ua);
-var isMobile = isAndroid || isIOS;
-var opened = false;
-
-// 微信内提示
-if (isWechat) {
-  document.getElementById('status').innerHTML =
-    '⚠️ 微信内无法直接打开淘宝<br/>请点击右上角「...」→「在浏览器打开」';
-  document.getElementById('btnOpen').style.display = 'none';
-  document.getElementById('btnWeb').style.display = 'block';
-  document.getElementById('btnWeb').textContent = '🌐 在浏览器中打开';
-  document.querySelector('.loading').style.display = 'none';
-}
-
-// ====== 自动打开逻辑 ======
-function tryOpen() {
-  if (opened) return;
-  opened = true;
-
-  if (isWechat) return;
-
-  // 方式1：taobao:// 协议直接唤起
-  document.getElementById('status').textContent = '检测到已安装淘宝 App，正在自动打开...';
-  window.location.href = DEEP_LINK;
-
-  // 方式2：如果 taobao:// 没成功（1.5秒后页面还在），用 https:// App Link
-  setTimeout(function() {
-    if (document.hidden) return;
-    // 尝试用 https:// 格式的 App Link
-    var iframe = document.getElementById('tbFrame');
-    iframe.src = SHOP_URL;
-
-    setTimeout(function() {
-      if (document.hidden) return;
-      // 两种方式都没唤起，显示手动按钮
-      document.getElementById('status').textContent =
-        '未检测到淘宝 App？请手动选择：';
-      document.querySelector('.loading').style.display = 'none';
-      document.getElementById('btnOpen').style.display = 'block';
-      document.getElementById('btnWeb').style.display = 'block';
-      document.getElementById('btnCopy').style.display = 'block';
-    }, 1500);
-  }, 1500);
-}
-
-// 显示手动按钮的回退函数（App Link 成功后页面隐藏，不会调用）
-setTimeout(function() {
-  if (!document.hidden && !opened) {
-    opened = true;
-    document.getElementById('status').textContent = '未检测到淘宝 App？请手动选择：';
-    document.querySelector('.loading').style.display = 'none';
-    document.getElementById('btnOpen').style.display = 'block';
-    document.getElementById('btnWeb').style.display = 'block';
-    document.getElementById('btnCopy').style.display = 'block';
-  }
-}, 4000);
-
-// 开始自动跳转
-if (isMobile && !isWechat) {
-  tryOpen();
-}
-
-// ====== 按钮事件 ======
-document.getElementById('btnOpen').addEventListener('click', function(e) {
-  e.preventDefault();
-  window.location.href = DEEP_LINK;
-  setTimeout(function() {
-    window.open(SHOP_URL, '_blank');
-  }, 1500);
-});
-
-document.getElementById('btnWeb').addEventListener('click', function(e) {
-  e.preventDefault();
-  window.open(SHORT_URL, '_blank');
-});
+var SHOP_URL = 'https://shop.m.taobao.com/shop/shop_index.htm?shop_id=515102705';
 
 document.getElementById('btnCopy').addEventListener('click', function(e) {
   e.preventDefault();
-  copyText(SHOP_URL, '店铺链接已复制！请打开手机淘宝粘贴到搜索框');
+  copyText(SHOP_URL, '链接已复制！\n请打开手机淘宝 App → 粘贴到搜索框 → 进入店铺');
+});
+
+document.getElementById('btnOpen').addEventListener('click', function(e) {
+  e.preventDefault();
+  // 先尝试 taobao:// 协议
+  window.location.href = 'taobao://shop.m.taobao.com/shop/shop_index.htm?shop_id=515102705';
+  // 1.5秒后如果不成功，用浏览器打开
+  setTimeout(function() {
+    if (!document.hidden) {
+      window.open(SHOP_URL, '_blank');
+    }
+  }, 1500);
 });
 
 function copyText(text, msg) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function() {
-      alert(msg);
-    }).catch(function() {
-      fallbackCopy(text, msg);
-    });
-  } else {
-    fallbackCopy(text, msg);
-  }
+    navigator.clipboard.writeText(text).then(function() { alert(msg); })
+      .catch(function() { fallbackCopy(text, msg); });
+  } else { fallbackCopy(text, msg); }
 }
 
 function fallbackCopy(text, msg) {
